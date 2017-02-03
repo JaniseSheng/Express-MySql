@@ -72,8 +72,8 @@ router.get('/imageDeleteAll', function (req, res, next) {
     imageslist.imageDeleteAll(req, res, next);
 });
 //修改
-router.post('/imageUpdate', function (req, res, next) {
+router.post('/imageUpdate', upload.single('picture'), function (req, res, next) {
     imageslist.imageUpdate(req, res, next);
-});1
+});
 
 module.exports = router;

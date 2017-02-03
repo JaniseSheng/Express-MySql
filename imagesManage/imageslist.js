@@ -25,33 +25,33 @@ const jsonWrite = function (res, ret) {
 module.exports = {
     //查找所有
     imageAll: (req, res, next) => {
-        pool.getConnection((err, conn) => {
-            conn.query($sql.imageAll, function (err, result) {
+        pool.getConnection((err, connection) => {
+            connection.query($sql.imageAll, function (err, result) {
                 // jsonWrite(res, result);
                 if (err) {
                     return next(err);
                 }
                 jsonWrite(res, result);
-                conn.release();
+                connection.release();
             });
         });
     },
 
     //根据Id查找
     imageById: (req, res, next) => {
-        pool.getConnection((err, conn) => {
+        pool.getConnection((err, connection) => {
             const params = req.query;
-            conn.query($sql.imageById, params.id, function (err, result) {
-                if(err){
+            connection.query($sql.imageById, params.id, function (err, result) {
+                if (err) {
                     res.json({
                         code: '0',
                         msg: '查询失败'
                     });
-                    return ;
+                    return;
                 }
                 // jsonWrite(res, result);
                 jsonWrite(res, result);
-                conn.release();
+                connection.release();
             });
         });
     },
@@ -59,17 +59,17 @@ module.exports = {
 
     //添加商品
     imageAdd: (req, res, next) => {
-        pool.getConnection((err, conn) => {
+        pool.getConnection((err, connection) => {
             console.log(req);
             const params = req.body;
             // 建立连接，向表中插入值
             // 'INSERT INTO user(id, name, age) VALUES(0,?,?)',
             if (err) return next(err);
-            if(!req.file) return next(err);
+            if (!req.file) return next(err);
             const url = path.join(`http://${config.serverIp}:${config.port}/uploads/`, req.file.filename);
             const originalName = req.file.originalname;
             const fileName = req.file.filename;
-            conn.query($sql.imageinsert, [url, fileName, originalName, params.text], function (err, result) {
+            connection.query($sql.imageinsert, [url, fileName, originalName, params.text], function (err, result) {
                 if (result) {
                     result = {
                         code: 200,
@@ -77,7 +77,7 @@ module.exports = {
                     }
                 }
                 jsonWrite(res, result);
-                conn.release();
+                connection.release();
             })
         })
     },
@@ -86,17 +86,17 @@ module.exports = {
     imageDeleteById: (req, res, next) => {
         // delete by Id
         pool.getConnection(function (err, connection) {
-            if(err) return next(err);
+            if (err) return next(err);
             const params = req.query;
 
             connection.query($sql.imageById, params.id, function (err, result) {
-                if(err){
+                if (err) {
                     res.json({
                         code: '0',
                         msg: '查询失败'
                     });
-                    return ;
-                }else {
+                    return;
+                } else {
                     fs.unlink(path.join(`${config.rootPath}public/uploads/`, result[0].fileName), (err) => {
                         if (err) throw err;
                         console.log(`successfully deleted ${result.fileName}`);
@@ -119,15 +119,15 @@ module.exports = {
         });
     },
 
-    //删除商品
+    //删除所有商品
     imageDeleteAll: (req, res, next) => {
         // delete All
         pool.getConnection(function (err, connection) {
-            if(err) return next(err);
+            if (err) return next(err);
             const params = req.query;
-            if(params.id != -1) {
+            if (params.id != -1) {
                 jsonWrite(res, {
-                    status:false,
+                    status: false,
                     msg: '参数有误。'
                 });
                 return;
@@ -135,12 +135,12 @@ module.exports = {
             connection.query($sql.imageAll, function (err, result) {
                 if (err) {
                     jsonWrite(res, {
-                        status:false,
+                        status: false,
                         msg: '删除失败'
                     });
                     return next(err);
-                }else {
-                    result.forEach((item)=>{
+                } else {
+                    result.forEach((item) => {
                         fs.unlink(path.join(`${config.rootPath}public/uploads/`, item.fileName), (err) => {
                             if (err) throw err;
                             console.log(`successfully deleted ${result.fileName}`);
@@ -148,7 +148,7 @@ module.exports = {
                         });
                     });
                     jsonWrite(res, {
-                        status:true,
+                        status: true,
                         code: 200,
                         msg: '全部删除成功'
                     });
@@ -163,16 +163,34 @@ module.exports = {
     imageUpdate: (req, res, next) => {
         // delete by Id
         pool.getConnection(function (err, connection) {
-            if(err) return next(err);
+            if (err) return next(err);
             const params = req.body;
-            connection.query($sql.imageupdate, [params.name, params.desc, params.price, params.sum, params.id], function (err, result) {
-                if (result) {
-                    result = {
-                        code: 200,
-                        msg: '修改成功'
-                    };
+            connection.query($sql.imageById, params.id, function (err, result) {
+                if (err) {
+                    res.json({
+                        code: '0',
+                        msg: '查询失败'
+                    });
+                } else {
+                    req.file && fs.unlink(path.join(`${config.rootPath}public/uploads/`, result[0].fileName));
+
+                    const url = req.file ? path.join(`http://${config.serverIp}:${config.port}/uploads/`, req.file.filename) : result[0].url;
+                    const fileName = req.file ? req.file.filename : result[0].fileName;
+                    const originalName = req.file ? req.file.originalname : result[0].originalName;
+                    const text = params.text ? params.text : result[0].text;
+                    connection.query($sql.imageupdate, [url, fileName, originalName, text, params.id], function (err, result) {
+                        if (err) {
+                            res.json({
+                                code: '0',
+                                msg: '修改失败'
+                            });
+                        }
+                        jsonWrite(res, {
+                            status: true,
+                            msg: '修改成功'
+                        });
+                    });
                 }
-                jsonWrite(res, result);
                 connection.release();
             });
         });

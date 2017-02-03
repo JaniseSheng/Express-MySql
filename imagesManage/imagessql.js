@@ -9,7 +9,7 @@ const images={
     //删所有
     imagedeleteall: 'delete from images where 1=1',
     //改
-    imageupdate:'UPDATE `images` SET `text`=? WHERE `id`=?',
+    imageupdate:'UPDATE images SET `url`=?,`fileName`=?,`originalName`=?,`text`=? WHERE `id`=?',
     //查所有
     imageAll: 'select * from images',
     //根据ID查找
