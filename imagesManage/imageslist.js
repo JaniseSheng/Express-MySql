@@ -65,10 +65,9 @@ module.exports = {
             // 建立连接，向表中插入值
             // 'INSERT INTO user(id, name, age) VALUES(0,?,?)',
             if (err) return next(err);
-            if (!req.file) return next(err);
-            const url = path.join(`http://${config.serverIp}:${config.port}/uploads/`, req.file.filename);
-            const originalName = req.file.originalname;
-            const fileName = req.file.filename;
+            const url = req.file ? `http://${config.serverIp}:${config.port}/uploads/${req.file.filename}` : '';
+            const originalName = req.file ? req.file.originalname : '';
+            const fileName = req.file ? req.file.filename : '';
             connection.query($sql.imageinsert, [url, fileName, originalName, params.text], function (err, result) {
                 if (result) {
                     result = {
@@ -97,22 +96,24 @@ module.exports = {
                     });
                     return;
                 } else {
-                    fs.unlink(path.join(`${config.rootPath}public/uploads/`, result[0].fileName), (err) => {
+                    result[0].fileName && fs.unlink(path.join(`${config.rootPath}public/uploads/`, result[0].fileName), (err) => {
                         if (err) throw err;
                         console.log(`successfully deleted ${result.fileName}`);
-                        connection.query($sql.imagedelete, params.id, function (err, result) {
-                            if (result.affectedRows > 0) {
-                                result = {
-                                    code: 200,
-                                    msg: '删除成功'
-                                };
-                            } else {
-                                result = void 0;
-                            }
-                            jsonWrite(res, result);
-                            connection.release();
-                        });
                     });
+                    connection.query($sql.imagedelete, params.id, function (err, result) {
+                        if (result.affectedRows > 0) {
+                            result = {
+                                code: 200,
+                                msg: '删除成功'
+                            };
+                        } else {
+                            result = void 0;
+                        }
+                        jsonWrite(res, result);
+                        connection.release();
+                    });
+
+
                 }
             });
 
@@ -140,12 +141,13 @@ module.exports = {
                     });
                     return next(err);
                 } else {
+                    const imgPath = path.join(`${config.rootPath}public/uploads/`);
+                    fs.readdirSync(imgPath).forEach(function(file,index){
+                        fs.unlinkSync(imgPath + file);
+                    });
+
                     result.forEach((item) => {
-                        fs.unlink(path.join(`${config.rootPath}public/uploads/`, item.fileName), (err) => {
-                            if (err) throw err;
-                            console.log(`successfully deleted ${result.fileName}`);
-                            connection.query($sql.imagedelete, item.id);
-                        });
+                        connection.query($sql.imagedelete, item.id);
                     });
                     jsonWrite(res, {
                         status: true,
@@ -173,7 +175,6 @@ module.exports = {
                     });
                 } else {
                     req.file && fs.unlink(path.join(`${config.rootPath}public/uploads/`, result[0].fileName));
-
                     const url = req.file ? path.join(`http://${config.serverIp}:${config.port}/uploads/`, req.file.filename) : result[0].url;
                     const fileName = req.file ? req.file.filename : result[0].fileName;
                     const originalName = req.file ? req.file.originalname : result[0].originalName;
